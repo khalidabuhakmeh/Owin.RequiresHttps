@@ -13,7 +13,11 @@
         {
             //Given
             var owinhttps = GetOwinHttps(GetNextFunc());
-            var environment = new Dictionary<string, object> { { "owin.RequestScheme", "https" } };
+            var environment = new Dictionary<string, object>
+            {
+                { "owin.RequestScheme", "https" },
+                { "owin.ResponseHeaders", new Dictionary<string, string[]>()}
+            };
 
             //When
             var task = owinhttps.Invoke(environment);
@@ -27,8 +31,12 @@
         public void Should_Return_401_If_Http()
         {
             //Given
-            var owinhttps = GetOwinHttps(GetNextFunc());
-            var environment = new Dictionary<string, object> { { "owin.RequestScheme", "http" } };
+            var owinhttps = GetOwinHttps(GetNextFunc(), new RequiresHttpsOptions { Force401 = true });
+            var environment = new Dictionary<string, object>
+            {
+                { "owin.RequestScheme", "http" },
+                { "owin.ResponseHeaders", new Dictionary<string, string[]>()}
+            };
 
             //When
             owinhttps.Invoke(environment);
@@ -41,8 +49,12 @@
         public void Should_Return_Completed_Task_If_Http()
         {
             //Given
-            var owinhttps = GetOwinHttps(GetNextFunc());
-            var environment = new Dictionary<string, object> { { "owin.RequestScheme", "http" } };
+            var owinhttps = GetOwinHttps(GetNextFunc(), new RequiresHttpsOptions { Force401 = true });
+            var environment = new Dictionary<string, object>
+            {
+                { "owin.RequestScheme", "http" },
+                { "owin.ResponseHeaders", new Dictionary<string, string[]>()}
+            };
 
             //When
             var task = owinhttps.Invoke(environment);
@@ -101,7 +113,7 @@
         {
             //Given
             var owinhttps = GetOwinHttps(GetNextFunc(),
-                new RequiresHttpsOptions() { RedirectToHttpsPath = "" });
+                new RequiresHttpsOptions() { RedirectToHttpsPath = "", Force401 = true });
 
             var environment = new Dictionary<string, object>
             {
@@ -115,6 +127,79 @@
             //Then
             Assert.Equal(401, environment["owin.ResponseStatusCode"]);
         }
+
+        [Fact]
+        public void Should_Redirect_To_Https_Version_Of_Http_Url()
+        {
+            var owinhttps = GetOwinHttps(GetNextFunc());
+
+            var environment = new Dictionary<string, object>
+            {
+                {"owin.RequestScheme", "http"},
+                {"owin.RequestPathBase", ""},
+                {"owin.RequestPath", "" },
+                {"owin.RequestQueryString", "" },
+                {"owin.ResponseHeaders", new Dictionary<string, string[]>{ {"Host", new []{ "localhost" }}}}
+            };
+
+            //When
+            owinhttps.Invoke(environment);
+
+            //Then
+            
+            Assert.Equal(302, environment["owin.ResponseStatusCode"]);
+            var headers = environment["owin.ResponseHeaders"] as Dictionary<string, string[]>;
+            Assert.Equal("https://localhost", headers["Location"].First());
+        }
+
+        [Fact]
+        public void Should_Redirect_To_Https_Version_Of_Http_Url_With_Port_Number()
+        {
+            var owinhttps = GetOwinHttps(GetNextFunc(), new RequiresHttpsOptions() { HttpsPortNumber = 2014 });
+
+            var environment = new Dictionary<string, object>
+            {
+                {"owin.RequestScheme", "http"},
+                {"owin.RequestPathBase", ""},
+                {"owin.RequestPath", "" },
+                {"owin.RequestQueryString", "" },
+                {"owin.ResponseHeaders", new Dictionary<string, string[]>{ {"Host", new []{ "localhost" }}}}
+            };
+
+            //When
+            owinhttps.Invoke(environment);
+
+            //Then
+
+            Assert.Equal(302, environment["owin.ResponseStatusCode"]);
+            var headers = environment["owin.ResponseHeaders"] as Dictionary<string, string[]>;
+            Assert.Equal("https://localhost:2014", headers["Location"].First());
+        }
+
+        [Fact]
+        public void Should_Redirect_To_Https_Version_Of_Http_Url_With_QueryString()
+        {
+            var owinhttps = GetOwinHttps(GetNextFunc());
+
+            var environment = new Dictionary<string, object>
+            {
+                {"owin.RequestScheme", "http"},
+                {"owin.RequestPathBase", ""},
+                {"owin.RequestPath", "" },
+                {"owin.RequestQueryString", "awesome=yes&cool=definitely" },
+                {"owin.ResponseHeaders", new Dictionary<string, string[]>{ {"Host", new []{ "localhost" }}}}
+            };
+
+            //When
+            owinhttps.Invoke(environment);
+
+            //Then
+
+            Assert.Equal(302, environment["owin.ResponseStatusCode"]);
+            var headers = environment["owin.ResponseHeaders"] as Dictionary<string, string[]>;
+            Assert.Equal("https://localhost?awesome=yes&cool=definitely", headers["Location"].First());
+        }
+
 
         public Func<IDictionary<string, object>, Task> GetNextFunc()
         {
