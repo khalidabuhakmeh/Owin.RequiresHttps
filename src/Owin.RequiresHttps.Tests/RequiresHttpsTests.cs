@@ -200,6 +200,30 @@
             Assert.Equal("https://localhost?awesome=yes&cool=definitely", headers["Location"].First());
         }
 
+        [Fact]
+        public void Should_Redirect_To_Https_Version_Of_Http_Url_With_Existing_Port_Number()
+        {
+            var owinhttps = GetOwinHttps(GetNextFunc());
+
+            var environment = new Dictionary<string, object>
+            {
+                {"owin.RequestScheme", "http"},
+                {"owin.RequestPathBase", ""},
+                {"owin.RequestPath", "" },
+                {"owin.RequestQueryString", "" },
+                {"owin.ResponseHeaders", new Dictionary<string, string[]>{ {"Host", new []{ "localhost:1999" }}}}
+            };
+
+            //When
+            owinhttps.Invoke(environment);
+
+            //Then
+
+            Assert.Equal(302, environment["owin.ResponseStatusCode"]);
+            var headers = environment["owin.ResponseHeaders"] as Dictionary<string, string[]>;
+            Assert.Equal("https://localhost", headers["Location"].First());
+        }
+
 
         public Func<IDictionary<string, object>, Task> GetNextFunc()
         {
